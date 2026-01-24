@@ -239,29 +239,36 @@ exports.startTask = [
 //     res.status(500).json({ error: "Complete failed" });
 //   }
 // };
-exports.completeTask = async (req, res) => {
-  const task = await Task.findById(req.params.id);
+exports.completeTask = [
+  upload.single("afterPhoto"),
+  async (req, res) => {
+    const task = await Task.findById(req.params.id);
 
-  if (!task) return res.status(404).json({ error: "Task not found" });
-  if (task.isLocked) return res.status(400).json({ error: "Task locked" });
-  if (task.assignedSupervisor.toString() !== req.user.id) {
-    return res.status(403).json({ error: "Not your task" });
-  }
-  if (!task.beforePhotoUrl) {
-    return res.status(400).json({ error: "Before photo missing" });
-  }
-  if (!req.body.afterPhotoUrl) {
-    return res.status(400).json({ error: "After photo required" });
-  }
+    if (!task) return res.status(404).json({ error: "Task not found" });
+    if (task.isLocked) return res.status(400).json({ error: "Task locked" });
 
-  task.afterPhotoUrl = req.body.afterPhotoUrl;
-  task.status = "COMPLETED";
-  task.approved = false; // reset if re-upload
-  task.isLocked = false;
+    if (task.assignedSupervisor.toString() !== req.user.id) {
+      return res.status(403).json({ error: "Not your task" });
+    }
 
-  await task.save();
-  res.json(task);
-};
+    if (!task.beforePhotoUrl) {
+      return res.status(400).json({ error: "Before photo missing" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: "After photo required" });
+    }
+
+    task.afterPhotoUrl = `/uploads/${req.file.filename}`;
+    task.status = "COMPLETED";
+    task.approved = false;
+    task.isLocked = false;
+
+    await task.save();
+    res.json(task);
+  },
+];
+
 
 /**
  * =========================
